@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, RotateCcw, Move, Crosshair, Minus, Plus, Download, Loader2, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Upload, RotateCcw, Crosshair, Minus, Plus, Download, Loader2, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { OverlayConfig, ImageState, AlignmentAnalysis } from '../types';
 import { analyzeAlignmentImage } from '../services/geminiService';
 import html2canvas from 'html2canvas';
@@ -110,7 +110,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'bottom';
-        ctx.fillText('qc.geektime.watch', canvas.width - 20, canvas.height - 20);
+        ctx.fillText('qc.geektime.io', canvas.width - 20, canvas.height - 20);
       }
 
       // Trigger download
