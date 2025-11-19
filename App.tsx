@@ -18,9 +18,6 @@ const App: React.FC = () => {
     const storedKey = localStorage.getItem('gemini_api_key');
     if (storedKey) {
       setApiKey(storedKey);
-    } else if (process.env.API_KEY) {
-      // Fallback to env var if available (dev mode)
-      setApiKey(process.env.API_KEY);
     }
   }, []);
 
@@ -60,7 +57,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight">GEEKTIME <span className="text-[#00CFEF]">QC</span></h1>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Edited by Eric</p>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Quality Control Tool</p>
             </div>
           </div>
 
