@@ -38,14 +38,24 @@ const App: React.FC = () => {
       <header className="bg-slate-900 border-b border-slate-800 shrink-0 z-40 relative">
         <div className="max-w-full mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-[#00CFEF] p-1.5 rounded-lg shadow-lg shadow-[#00CFEF]/20">
-              <Watch className="text-slate-950" size={20} />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white tracking-tight">GEEKTIME <span className="text-[#00CFEF]">QC</span></h1>
-            </div>
+            <a 
+              href="https://geektime.io/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 group hover:opacity-90 transition-opacity"
+            >
+                <div className="bg-[#00CFEF] p-1.5 rounded-lg shadow-lg shadow-[#00CFEF]/20 group-hover:scale-105 transition-transform">
+                  <Watch className="text-slate-950" size={20} />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-white tracking-tight group-hover:text-[#00CFEF] transition-colors">
+                    SHOP ON <span className="text-[#00CFEF] group-hover:text-white transition-colors">GEEKTIME</span>
+                  </h1>
+                </div>
+            </a>
+
             {/* System Status Indicator */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700 ml-2">
                 <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-rose-500 animate-pulse'}`}></div>
                 <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                     {hasKey ? 'System Ready' : 'No API Key'}
