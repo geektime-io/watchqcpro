@@ -12,6 +12,58 @@ const getGenAI = () => {
 };
 
 /**
+ * Helper to compress image before sending to AI.
+ * Optimized for Mobile: Uses URL.createObjectURL instead of FileReader to save memory.
+ */
+export const compressImage = (blob: Blob, maxWidth: number = 1024): Promise<{ base64: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+        // Use createObjectURL which is much lighter on memory than FileReader for large images
+        const objectUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl); // Clean up memory immediately
+            
+            const elem = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // Calculate new dimensions keeping aspect ratio
+            if (width > maxWidth || height > maxWidth) {
+                if (width > height) {
+                    height *= maxWidth / width;
+                    width = maxWidth;
+                } else {
+                    width *= maxWidth / height;
+                    height = maxWidth;
+                }
+            }
+
+            elem.width = width;
+            elem.height = height;
+            const ctx = elem.getContext('2d');
+            if (!ctx) {
+                reject(new Error("Could not get canvas context"));
+                return;
+            }
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Compress to JPEG at 80% quality
+            const dataUrl = elem.toDataURL('image/jpeg', 0.8);
+            const base64 = dataUrl.split(',')[1];
+            resolve({ base64, mimeType: 'image/jpeg' });
+        };
+        
+        img.onerror = (err) => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("Failed to load image for compression"));
+        };
+
+        img.src = objectUrl;
+    });
+};
+
+/**
  * Analyzes a timegrapher image to extract metrics.
  */
 export const analyzeTimegrapherImage = async (base64Image: string, mimeType: string): Promise<TimegrapherMetrics> => {
