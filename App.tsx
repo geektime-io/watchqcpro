@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
-import { Watch, Activity, CheckSquare } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Watch, Activity, CheckSquare, Wifi, AlertTriangle } from 'lucide-react';
 import QCAlignment from './components/QCAlignment';
 import Timegrapher from './components/Timegrapher';
 import { QCMode } from './types';
+import { checkApiKey } from './services/geminiService';
 
 const App: React.FC = () => {
   const [mode, setMode] = useState<QCMode>(QCMode.ALIGNMENT);
   const [alignmentImage, setAlignmentImage] = useState<string | null>(null);
   const [timegrapherImage, setTimegrapherImage] = useState<string | null>(null);
-  
-  // API Key Hardcoded as requested
-  const apiKey = "AIzaSyCNU0gkJblt4mI8xq6fP-ATROv2p0zvCC0";
+  const [hasKey, setHasKey] = useState(false);
 
+  useEffect(() => {
+    setHasKey(checkApiKey());
+  }, []);
+  
   // Using URL.createObjectURL ensures the browser uses the original file reference
   const handleImageUpload = (file: File, targetMode: QCMode) => {
     const objectUrl = URL.createObjectURL(file);
@@ -30,16 +33,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-slate-950 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="bg-slate-900 border-b border-slate-800 shrink-0 z-40 relative">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <div className="max-w-full mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-[#00CFEF] p-1.5 rounded-lg shadow-lg shadow-[#00CFEF]/20">
               <Watch className="text-slate-950" size={20} />
             </div>
             <div>
               <h1 className="text-lg font-bold text-white tracking-tight">GEEKTIME <span className="text-[#00CFEF]">QC</span></h1>
+            </div>
+            {/* System Status Indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700">
+                <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-rose-500 animate-pulse'}`}></div>
+                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                    {hasKey ? 'System Ready' : 'No API Key'}
+                </span>
             </div>
           </div>
 
@@ -54,7 +64,8 @@ const App: React.FC = () => {
                 }`}
               >
                 <CheckSquare size={14} />
-                <span className="">Alignment</span>
+                <span className="hidden sm:inline">Alignment</span>
+                <span className="sm:hidden">Align</span>
               </button>
               <button
                 onClick={() => setMode(QCMode.TIMEGRAPHER)}
@@ -65,29 +76,35 @@ const App: React.FC = () => {
                 }`}
               >
                 <Activity size={14} />
-                <span className="">Timegrapher</span>
+                <span className="hidden sm:inline">Timegrapher</span>
+                <span className="sm:hidden">Timer</span>
               </button>
             </div>
           </div>
         </div>
+        
+        {/* Mobile Status Banner if Key Missing */}
+        {!hasKey && (
+            <div className="bg-rose-600 text-white text-[10px] py-1 px-4 text-center font-bold uppercase tracking-wider">
+                API Key Config Missing - AI Features Disabled
+            </div>
+        )}
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 relative flex flex-col overflow-hidden">
+      {/* Main Content - Use flex-1 to fill remaining height */}
+      <main className="flex-1 relative flex flex-col overflow-hidden min-h-0">
         {mode === QCMode.ALIGNMENT ? (
           <QCAlignment 
             imageSrc={alignmentImage} 
             onUpload={(f) => handleImageUpload(f, QCMode.ALIGNMENT)} 
-            apiKey={apiKey}
-            onOpenSettings={() => {}} // No-op since settings are removed
+            onOpenSettings={() => {}} 
           />
         ) : (
           <div className="flex-1 overflow-y-auto">
             <Timegrapher 
               imageSrc={timegrapherImage}
               onUpload={(f) => handleImageUpload(f, QCMode.TIMEGRAPHER)}
-              apiKey={apiKey}
-              onOpenSettings={() => {}} // No-op
+              onOpenSettings={() => {}} 
             />
           </div>
         )}
