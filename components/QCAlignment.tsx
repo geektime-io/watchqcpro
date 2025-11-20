@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, RotateCcw, Crosshair, Minus, Plus, Download, Loader2, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, RotateCcw, Crosshair, Minus, Plus, Download, Loader2, Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { OverlayConfig, ImageState, AlignmentAnalysis } from '../types';
 import { analyzeAlignmentImage } from '../services/geminiService';
 import html2canvas from 'html2canvas';
@@ -7,11 +7,10 @@ import html2canvas from 'html2canvas';
 interface QCAlignmentProps {
   imageSrc: string | null;
   onUpload: (file: File) => void;
-  apiKey: string;
   onOpenSettings: () => void;
 }
 
-const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey }) => {
+const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
   // Image manipulation state
   const [imgState, setImgState] = useState<ImageState>({
     rotation: 0,
@@ -43,6 +42,24 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
   const lastTouchPos = useRef<{x: number, y: number} | null>(null);
   
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Prevent default touch actions to stop page scrolling
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Aggressively prevent default on the canvas to stop scrolling
+    const preventDefault = (e: TouchEvent) => {
+        e.preventDefault();
+    };
+
+    // We apply this to the container so ANY touch inside the black area stops scrolling
+    container.addEventListener('touchmove', preventDefault, { passive: false });
+    
+    return () => {
+        container.removeEventListener('touchmove', preventDefault);
+    };
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -88,6 +105,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
   // --- Touch Events (Mobile) ---
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!imageSrc) return;
+    
     if (e.touches.length === 1) {
         // Single touch - Start Drag
         const touch = e.touches[0];
@@ -105,13 +123,12 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!imageSrc) return;
     
-    // Important: Prevent page scrolling while manipulating image
-    if(e.cancelable) e.preventDefault();
+    // Double ensure no scrolling happens
+    if (e.cancelable) e.preventDefault();
 
     if (e.touches.length === 1 && isDragging) {
         // Pan
         const touch = e.touches[0];
-        // We use dragStart logic similar to mouse, but updated for touch
         setImgState(prev => ({
             ...prev,
             x: touch.clientX - dragStart.x,
@@ -125,7 +142,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
 
         if (lastTouchDistance.current !== null) {
             const delta = currentDistance - lastTouchDistance.current;
-            const zoomSpeed = 0.005; // Adjust sensitivity
+            const zoomSpeed = 0.005; 
             setImgState(prev => {
                 const newScale = Math.max(0.1, Math.min(10, prev.scale + (delta * zoomSpeed)));
                 return { ...prev, scale: newScale };
@@ -182,7 +199,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
   };
 
   const handleAnalyze = async () => {
-    if (!imageSrc || !apiKey) return;
+    if (!imageSrc) return;
     setIsAnalyzing(true);
     setAnalysis(null);
 
@@ -197,61 +214,61 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
             const mimeType = base64data.substring(base64data.indexOf(':') + 1, base64data.indexOf(';'));
             
             try {
-                const result = await analyzeAlignmentImage(base64Content, mimeType, apiKey);
+                const result = await analyzeAlignmentImage(base64Content, mimeType);
                 setAnalysis(result);
-            } catch (err) {
+            } catch (err: any) {
                 console.error(err);
-                alert("AI Analysis Failed.");
+                alert(`AI Analysis Failed: ${err.message}`);
             } finally {
                 setIsAnalyzing(false);
             }
         };
         reader.readAsDataURL(blob);
 
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        alert("Failed to process image for AI analysis.");
+        alert(`Failed to process image: ${e.message}`);
         setIsAnalyzing(false);
     }
   };
 
   const renderOverlay = () => {
-    const rulerSize = 800; 
-    
-    const drawingStyle = {
-        width: `${rulerSize}px`,
-        height: `${rulerSize}px`,
-        flexShrink: 0, // Prevent squashing
-    };
+    // Fix: Use aspect-square and margin-auto to ensure perfect circle/square
+    // independently of the container's aspect ratio
+    const containerClass = "aspect-square max-h-full max-w-full m-auto relative";
 
     if (overlay.type === 'indices') {
       return (
-        <div style={drawingStyle} className="flex items-center justify-center relative aspect-square">
+        <div className={containerClass}>
           {/* Central Cross */}
-          <div className="absolute w-full h-px shadow-sm" style={{ backgroundColor: overlay.color }}></div>
-          <div className="absolute h-full w-px shadow-sm" style={{ backgroundColor: overlay.color }}></div>
+          <div className="absolute w-full h-px shadow-sm top-1/2 -translate-y-1/2" style={{ backgroundColor: overlay.color }}></div>
+          <div className="absolute h-full w-px shadow-sm left-1/2 -translate-x-1/2" style={{ backgroundColor: overlay.color }}></div>
+          
           {/* 12 Hour Markers */}
-          {[...Array(6)].map((_, i) => (
-             <div 
-              key={i} 
-              className="absolute w-full h-px shadow-sm" 
-              style={{ 
-                backgroundColor: overlay.color, 
-                transform: `rotate(${i * 30}deg)` 
-              }} 
-            />
-          ))}
+          <div className="absolute inset-0 flex items-center justify-center">
+             {[...Array(6)].map((_, i) => (
+                <div 
+                 key={i} 
+                 className="absolute w-full h-px shadow-sm" 
+                 style={{ 
+                   backgroundColor: overlay.color, 
+                   transform: `rotate(${i * 30}deg)` 
+                 }} 
+               />
+             ))}
+          </div>
+
           {/* Center Circle */}
-          <div className="absolute w-4 h-4 rounded-full border" style={{ borderColor: overlay.color }}></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full border" style={{ borderColor: overlay.color }}></div>
            {/* Inner Circle Guide */}
-           <div className="absolute w-2/3 h-2/3 rounded-full border opacity-50" style={{ borderColor: overlay.color }}></div>
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[66%] h-[66%] rounded-full border opacity-50" style={{ borderColor: overlay.color }}></div>
         </div>
       );
     }
 
     if (overlay.type === 'grid') {
         return (
-            <div style={drawingStyle} className="flex flex-wrap content-center justify-center aspect-square">
+            <div className={containerClass}>
                 <div 
                     className="w-full h-full border opacity-70" 
                     style={{ 
@@ -268,15 +285,15 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full w-full bg-slate-950">
+    <div className="flex flex-col lg:flex-row h-full w-full bg-slate-950 overflow-hidden">
       
-      {/* Main Workspace (Canvas) - Updated Layout for Mobile */}
+      {/* Main Workspace (Canvas) */}
       <div 
-        className="relative flex-shrink-0 lg:flex-1 order-1 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col h-[60vh] lg:h-auto"
+        className="relative order-1 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col flex-grow min-h-0"
       >
         {/* Toolbar */}
         <div className="absolute top-4 left-4 right-4 z-30 flex justify-between items-center pointer-events-none">
-             <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg pointer-events-auto text-[10px] text-white/70 border border-white/10">
+             <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg pointer-events-auto text-[10px] text-white/70 border border-white/10 shadow-lg">
                 {imageSrc ? "Pinch to zoom • Drag to pan" : "Upload to start"}
              </div>
              <button 
@@ -301,6 +318,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onTouchCancel={handleTouchEnd}
+            style={{ touchAction: 'none' }} // Hard enforce no scrolling
         >
             {!imageSrc && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none z-10 p-8 text-center">
@@ -318,31 +336,29 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
                           transform: `translate(calc(-50% + ${imgState.x}px), calc(-50% + ${imgState.y}px)) rotate(${imgState.rotation}deg) scale(${imgState.scale})`,
                           left: '50%',
                           top: '50%',
-                          width: '0px', 
-                          height: '0px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
+                          // Removed explicit constraints to allow better mobile zoom
+                          width: 'auto',
+                          height: 'auto',
+                          maxWidth: 'none',
+                          maxHeight: 'none',
                       }}
                   >
-                      {/* Image sizing updated for mobile: min-width removed, using width constraints */}
                       <img 
                           src={imageSrc} 
                           alt="QC Watch" 
                           className="shadow-2xl pointer-events-none select-none" 
                           style={{ 
-                              width: 'auto',
-                              height: 'auto',
-                              maxWidth: '90vw', // Ensure it fits mobile width initially
-                              maxHeight: '90vh',
-                              objectFit: 'contain'
+                              display: 'block',
+                              // Ensure it's large enough on mobile by default
+                              minWidth: '100vw', 
+                              height: 'auto'
                           }}
                           draggable={false} 
                       />
                   </div>
 
-                  {/* Overlay Layer */}
-                  <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center overflow-hidden">
+                  {/* Overlay Layer - Centered Square */}
+                  <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center overflow-hidden p-4">
                       {renderOverlay()}
                   </div>
                 </>
@@ -351,8 +367,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
       </div>
 
       {/* Controls Sidebar */}
-      {/* Updated to min-h-0 and flex-1 to prevent overflow off-screen */}
-      <div className="flex-shrink-0 lg:w-56 w-full bg-slate-950 p-3 border-t lg:border-t-0 lg:border-l border-slate-800 order-2 flex-1 lg:flex-none overflow-y-auto min-h-0">
+      <div className="flex-shrink-0 lg:w-56 w-full bg-slate-950 p-3 border-t lg:border-t-0 lg:border-l border-slate-800 order-2 lg:flex-none overflow-y-auto max-h-[40vh] lg:max-h-none z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         
         {/* Desktop Upload */}
         <div className="hidden lg:block mb-3">
@@ -366,7 +381,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
         </div>
 
         {/* Mobile Upload & Save Group */}
-        <div className="lg:hidden mb-4 grid grid-cols-2 gap-2">
+        <div className="lg:hidden mb-3 grid grid-cols-2 gap-2">
              <label className="cursor-pointer block">
                 <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                 <div className="w-full py-2.5 bg-[#00CFEF] hover:bg-[#00bce0] text-slate-950 rounded-lg font-bold text-center flex items-center justify-center gap-2 shadow-lg shadow-[#00CFEF]/20 text-xs">
@@ -385,7 +400,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
             </button>
         </div>
 
-        <div className="space-y-3 pb-8"> {/* Added bottom padding for safe scrolling */}
+        <div className="space-y-3 pb-4">
             {/* Tools Selection */}
             <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tools</h3>
@@ -422,106 +437,67 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey })
 
             {/* Adjustments */}
             <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 space-y-3">
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Adjustment</h3>
-                
-                {/* Rotation */}
-                <div>
-                    <div className="flex justify-between text-[10px] mb-1.5 text-slate-300">
-                        <span>Rotation</span>
-                        <span className="font-mono text-[#00CFEF]">{imgState.rotation}°</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => adjustRotation(-0.1)} className="p-1 bg-slate-800 rounded hover:bg-slate-700 text-slate-300"><Minus size={12} /></button>
-                        <input 
-                            type="range" 
-                            min="-45" 
-                            max="45" 
-                            step="0.1"
-                            value={imgState.rotation}
-                            onChange={(e) => setImgState({ ...imgState, rotation: parseFloat(e.target.value) })}
-                            className="flex-1 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00CFEF]"
-                        />
-                        <button onClick={() => adjustRotation(0.1)} className="p-1 bg-slate-800 rounded hover:bg-slate-700 text-slate-300"><Plus size={12} /></button>
-                    </div>
+                <div className="flex justify-between items-center">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rotation</h3>
+                    <span className="font-mono text-[10px] text-[#00CFEF]">{imgState.rotation}°</span>
                 </div>
-
-                 {/* Overlay Color */}
-                 <div>
-                    <div className="flex justify-between text-[10px] mb-1.5 text-slate-300">
-                        <span>Ruler Color</span>
-                    </div>
-                    <div className="flex gap-2">
-                        {['#00CFEF', '#ef4444', '#22c55e', '#eab308', '#ffffff'].map(color => (
-                            <button
-                                key={color}
-                                onClick={() => setOverlay({ ...overlay, color })}
-                                className={`w-5 h-5 rounded-full border-2 ${overlay.color === color ? 'border-white scale-110' : 'border-transparent hover:scale-110'} transition-transform`}
-                                style={{ backgroundColor: color }}
-                            />
-                        ))}
-                    </div>
+                
+                <div className="flex items-center gap-2">
+                    <button onClick={() => adjustRotation(-0.1)} className="w-8 h-8 flex items-center justify-center bg-slate-800 rounded hover:bg-slate-700 text-slate-300"><Minus size={14} /></button>
+                    <input 
+                        type="range" 
+                        min="-45" 
+                        max="45" 
+                        step="0.1"
+                        value={imgState.rotation}
+                        onChange={(e) => setImgState({ ...imgState, rotation: parseFloat(e.target.value) })}
+                        className="flex-1 h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#00CFEF]"
+                    />
+                    <button onClick={() => adjustRotation(0.1)} className="w-8 h-8 flex items-center justify-center bg-slate-800 rounded hover:bg-slate-700 text-slate-300"><Plus size={14} /></button>
                 </div>
             </div>
 
-            {/* Actions */}
-            <div className="space-y-2">
-                 <button 
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing || !imageSrc}
-                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 border border-slate-700 text-xs"
-                >
-                    {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} className="text-purple-400" />}
-                    {isAnalyzing ? "Analyzing..." : "AI Alignment Check"}
-                </button>
+             {/* AI Analysis Button */}
+             <button 
+                onClick={handleAnalyze}
+                disabled={!imageSrc || isAnalyzing}
+                className="w-full py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 disabled:grayscale text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 transition-all"
+            >
+                {isAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                <span>AI Alignment Check</span>
+            </button>
 
-                {/* Desktop Save Button */}
+            {/* AI Results */}
+            {analysis && (
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 animate-in slide-in-from-bottom-2">
+                    <div className={`text-sm font-bold mb-2 flex items-center gap-2 ${
+                        analysis.verdict === 'Excellent' ? 'text-emerald-400' : 
+                        analysis.verdict === 'Acceptable' ? 'text-amber-400' : 'text-rose-400'
+                    }`}>
+                        {analysis.verdict === 'Excellent' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                        Verdict: {analysis.verdict}
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed mb-2">{analysis.summary}</p>
+                    {analysis.issues.length > 0 && analysis.issues[0] !== "None" && (
+                        <ul className="text-[10px] text-slate-400 list-disc pl-4 space-y-1">
+                            {analysis.issues.map((issue, idx) => (
+                                <li key={idx}>{issue}</li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
+
+            <div className="hidden lg:block">
                 <button 
                     onClick={handleSaveImage}
                     disabled={isSaving || !imageSrc}
-                    className="hidden lg:flex w-full py-2.5 bg-[#00CFEF] hover:bg-[#00bce0] disabled:opacity-50 text-slate-950 rounded-lg font-bold transition-colors items-center justify-center gap-2 shadow-lg shadow-[#00CFEF]/20 text-xs"
+                    className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
                 >
-                    {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
-                    Save Analysis
+                    {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
+                    Save QC Image
                 </button>
             </div>
-
-            {/* AI Results Panel */}
-            {analysis && (
-                <div className="mt-4 bg-slate-900 border border-slate-800 rounded-xl p-3 animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-bold text-white flex items-center gap-2 text-xs">
-                            <Sparkles size={14} className="text-[#00CFEF]" /> Verdict
-                        </h4>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            analysis.verdict === 'Excellent' ? 'bg-emerald-500/20 text-emerald-400' :
-                            analysis.verdict === 'Acceptable' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-rose-500/20 text-rose-400'
-                        }`}>
-                            {analysis.verdict.toUpperCase()}
-                        </span>
-                    </div>
-                    
-                    <p className="text-xs text-slate-300 mb-3 leading-relaxed">
-                        {analysis.summary}
-                    </p>
-
-                    <div className="space-y-1.5">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Issues</p>
-                        {analysis.issues.length === 0 || (analysis.issues.length === 1 && analysis.issues[0].toLowerCase() === 'none') ? (
-                             <div className="flex items-center gap-2 text-emerald-400 text-[10px]">
-                                <CheckCircle2 size={12} /> No visible issues
-                             </div>
-                        ) : (
-                            analysis.issues.map((issue, i) => (
-                                <div key={i} className="flex items-start gap-2 text-slate-300 text-[10px]">
-                                    <AlertTriangle size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                                    <span>{issue}</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
         </div>
       </div>
     </div>
