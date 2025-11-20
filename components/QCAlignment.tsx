@@ -11,7 +11,7 @@ interface QCAlignmentProps {
   onOpenSettings: () => void;
 }
 
-const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, onOpenSettings }) => {
+const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey }) => {
   // Image manipulation state
   const [imgState, setImgState] = useState<ImageState>({
     rotation: 0,
@@ -23,7 +23,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
   // Overlay state
   const [overlay, setOverlay] = useState<OverlayConfig>({
     type: 'indices',
-    color: '#00CFEF', // Default color updated to cyan
+    color: '#00CFEF',
     rotation: 0,
     scale: 100,
     offsetX: 0,
@@ -37,24 +37,27 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Touch state refs
+  const lastTouchDistance = useRef<number | null>(null);
+  const lastTouchPos = useRef<{x: number, y: number} | null>(null);
+  
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       onUpload(e.target.files[0]);
-      // Reset state on new upload
       setImgState({ rotation: 0, scale: 1, x: 0, y: 0 });
-      setAnalysis(null); // Reset analysis
+      setAnalysis(null);
     }
   };
 
-  // Reset View
   const handleReset = () => {
     setImgState({ rotation: 0, scale: 1, x: 0, y: 0 });
     setOverlay({ ...overlay, rotation: 0, scale: 100, offsetX: 0, offsetY: 0 });
   };
 
-  // Panning logic for the image
+  // --- Mouse Events ---
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!imageSrc) return;
     setIsDragging(true);
@@ -73,16 +76,71 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
 
   const handleMouseUp = () => setIsDragging(false);
 
-  // Zoom logic (Wheel)
   const handleWheel = (e: React.WheelEvent) => {
     if (!imageSrc) return;
     const delta = -Math.sign(e.deltaY) * 0.1; 
     setImgState(prev => {
-        // Increased max scale to 10 for deep inspection of high-res images
         const newScale = Math.max(0.1, Math.min(10, prev.scale + delta));
         return { ...prev, scale: newScale };
     });
   };
+
+  // --- Touch Events (Mobile) ---
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!imageSrc) return;
+    if (e.touches.length === 1) {
+        // Single touch - Start Drag
+        const touch = e.touches[0];
+        lastTouchPos.current = { x: touch.clientX, y: touch.clientY };
+        setDragStart({ x: touch.clientX - imgState.x, y: touch.clientY - imgState.y });
+        setIsDragging(true);
+    } else if (e.touches.length === 2) {
+        // Two touches - Start Pinch
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        lastTouchDistance.current = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!imageSrc) return;
+    
+    // Important: Prevent page scrolling while manipulating image
+    if(e.cancelable) e.preventDefault();
+
+    if (e.touches.length === 1 && isDragging) {
+        // Pan
+        const touch = e.touches[0];
+        // We use dragStart logic similar to mouse, but updated for touch
+        setImgState(prev => ({
+            ...prev,
+            x: touch.clientX - dragStart.x,
+            y: touch.clientY - dragStart.y
+        }));
+    } else if (e.touches.length === 2) {
+        // Pinch Zoom
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const currentDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+
+        if (lastTouchDistance.current !== null) {
+            const delta = currentDistance - lastTouchDistance.current;
+            const zoomSpeed = 0.005; // Adjust sensitivity
+            setImgState(prev => {
+                const newScale = Math.max(0.1, Math.min(10, prev.scale + (delta * zoomSpeed)));
+                return { ...prev, scale: newScale };
+            });
+        }
+        lastTouchDistance.current = currentDistance;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    lastTouchDistance.current = null;
+    lastTouchPos.current = null;
+  };
+
 
   const adjustRotation = (delta: number) => {
     setImgState(prev => ({ ...prev, rotation: parseFloat((prev.rotation + delta).toFixed(2)) }));
@@ -93,18 +151,16 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
     setIsSaving(true);
 
     try {
-      // Use html2canvas to capture the container
       const canvas = await html2canvas(containerRef.current, {
         useCORS: true, 
         allowTaint: true,
-        backgroundColor: '#0f172a', // Match slate-950
-        scale: 3, // Increased quality multiplier
+        backgroundColor: '#0f172a',
+        scale: 3,
         logging: false
       });
 
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // Add Watermark
         const fontSize = Math.max(24, canvas.width * 0.03);
         ctx.font = `bold ${fontSize}px Inter, sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
@@ -113,7 +169,6 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
         ctx.fillText('qc.geektime.io', canvas.width - 20, canvas.height - 20);
       }
 
-      // Trigger download
       const link = document.createElement('a');
       link.download = `GeekTime-QC-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png', 1.0);
@@ -127,11 +182,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
   };
 
   const handleAnalyze = async () => {
-    if (!imageSrc) return;
-    if (!apiKey) {
-        onOpenSettings();
-        return;
-    }
+    if (!imageSrc || !apiKey) return;
     setIsAnalyzing(true);
     setAnalysis(null);
 
@@ -150,7 +201,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
                 setAnalysis(result);
             } catch (err) {
                 console.error(err);
-                alert("AI Analysis Failed. Check your API Key.");
+                alert("AI Analysis Failed.");
             } finally {
                 setIsAnalyzing(false);
             }
@@ -164,26 +215,22 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
     }
   };
 
-  // Render different overlays
   const renderOverlay = () => {
-    // Base style for the drawing container
-    // Using w-[800px] h-[800px] ensures consistent thickness regardless of screen size, 
-    // but we center it in the overlay layer.
     const rulerSize = 800; 
     
     const drawingStyle = {
         width: `${rulerSize}px`,
         height: `${rulerSize}px`,
-        position: 'relative' as const,
+        flexShrink: 0, // Prevent squashing
     };
 
     if (overlay.type === 'indices') {
       return (
-        <div style={drawingStyle} className="flex items-center justify-center">
-          {/* Central Cross - Thinner (1px) */}
+        <div style={drawingStyle} className="flex items-center justify-center relative aspect-square">
+          {/* Central Cross */}
           <div className="absolute w-full h-px shadow-sm" style={{ backgroundColor: overlay.color }}></div>
           <div className="absolute h-full w-px shadow-sm" style={{ backgroundColor: overlay.color }}></div>
-          {/* 12 Hour Markers radiating out - Thinner (1px) */}
+          {/* 12 Hour Markers */}
           {[...Array(6)].map((_, i) => (
              <div 
               key={i} 
@@ -194,9 +241,9 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
               }} 
             />
           ))}
-          {/* Center Circle - Thinner border */}
+          {/* Center Circle */}
           <div className="absolute w-4 h-4 rounded-full border" style={{ borderColor: overlay.color }}></div>
-           {/* Inner Circle Guide - Thinner border */}
+           {/* Inner Circle Guide */}
            <div className="absolute w-2/3 h-2/3 rounded-full border opacity-50" style={{ borderColor: overlay.color }}></div>
         </div>
       );
@@ -204,7 +251,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
 
     if (overlay.type === 'grid') {
         return (
-            <div style={drawingStyle} className="flex flex-wrap content-center justify-center">
+            <div style={drawingStyle} className="flex flex-wrap content-center justify-center aspect-square">
                 <div 
                     className="w-full h-full border opacity-70" 
                     style={{ 
@@ -217,53 +264,54 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
             </div>
         )
     }
-
     return null;
   };
 
   return (
     <div className="flex flex-col lg:flex-row h-full w-full bg-slate-950">
       
-      {/* Main Workspace (Canvas) */}
+      {/* Main Workspace (Canvas) - Updated Layout for Mobile */}
       <div 
-        className="relative flex-shrink-0 lg:flex-1 order-1 lg:order-1 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col h-[50vh] lg:h-auto"
+        className="relative flex-shrink-0 lg:flex-1 order-1 bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col h-[60vh] lg:h-auto"
       >
         {/* Toolbar */}
         <div className="absolute top-4 left-4 right-4 z-30 flex justify-between items-center pointer-events-none">
-             <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg pointer-events-auto text-xs text-white/70 border border-white/10">
-                {imageSrc ? "Drag to pan • Scroll to zoom" : "Upload to start"}
+             <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg pointer-events-auto text-[10px] text-white/70 border border-white/10">
+                {imageSrc ? "Pinch to zoom • Drag to pan" : "Upload to start"}
              </div>
              <button 
                 onClick={handleReset}
                 className="p-2 bg-[#00CFEF] hover:bg-[#00bce0] text-slate-950 rounded-lg pointer-events-auto shadow-lg transition-colors"
                 title="Reset All"
              >
-                <RotateCcw size={18} />
+                <RotateCcw size={16} />
              </button>
         </div>
 
         {/* Interactive Area */}
         <div 
             ref={containerRef}
-            className={`flex-1 relative overflow-hidden select-none bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`flex-1 relative overflow-hidden select-none bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
         >
             {!imageSrc && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none z-10">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 pointer-events-none z-10 p-8 text-center">
                     <Upload size={48} className="mb-4 opacity-50" />
-                    <p>No QC image loaded</p>
-                    <p className="text-xs text-slate-600 mt-2">Upload from the sidebar</p>
+                    <p className="text-sm">No QC image loaded</p>
                 </div>
             )}
 
             {imageSrc && (
                 <>
-                  {/* Image Layer - Transformed by user interactions */}
-                  {/* Z-Index 10: Below overlay */}
+                  {/* Image Layer */}
                   <div 
                       className="absolute origin-center will-change-transform z-10"
                       style={{
@@ -277,23 +325,23 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
                           justifyContent: 'center'
                       }}
                   >
+                      {/* Image sizing updated for mobile: min-width removed, using width constraints */}
                       <img 
                           src={imageSrc} 
                           alt="QC Watch" 
-                          className="shadow-2xl pointer-events-none" 
+                          className="shadow-2xl pointer-events-none select-none" 
                           style={{ 
-                              minWidth: '300px',
-                              maxWidth: '95vw', 
-                              maxHeight: '95vh',
-                              width: 'auto', 
-                              height: 'auto' 
+                              width: 'auto',
+                              height: 'auto',
+                              maxWidth: '90vw', // Ensure it fits mobile width initially
+                              maxHeight: '90vh',
+                              objectFit: 'contain'
                           }}
                           draggable={false} 
                       />
                   </div>
 
-                  {/* Overlay Layer - Static Reference */}
-                  {/* Z-Index 20: Above image. Pointer events NONE to allow clicking through to image. */}
+                  {/* Overlay Layer */}
                   <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center overflow-hidden">
                       {renderOverlay()}
                   </div>
@@ -303,9 +351,8 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
       </div>
 
       {/* Controls Sidebar */}
-      {/* Mobile: Takes remaining height */}
-      {/* Desktop: Fixed width w-56 (224px), Compact layout */}
-      <div className="flex-shrink-0 lg:w-56 w-full bg-slate-950 p-2 lg:p-3 border-t lg:border-t-0 lg:border-l border-slate-800 order-2 lg:order-2 overflow-y-auto flex-1 lg:flex-none lg:h-auto">
+      {/* Updated to min-h-0 and flex-1 to prevent overflow off-screen */}
+      <div className="flex-shrink-0 lg:w-56 w-full bg-slate-950 p-3 border-t lg:border-t-0 lg:border-l border-slate-800 order-2 flex-1 lg:flex-none overflow-y-auto min-h-0">
         
         {/* Desktop Upload */}
         <div className="hidden lg:block mb-3">
@@ -319,26 +366,26 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
         </div>
 
         {/* Mobile Upload & Save Group */}
-        <div className="lg:hidden mb-4 space-y-2">
+        <div className="lg:hidden mb-4 grid grid-cols-2 gap-2">
              <label className="cursor-pointer block">
                 <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                <div className="w-full py-3 bg-[#00CFEF] hover:bg-[#00bce0] text-slate-950 rounded-lg font-bold text-center flex items-center justify-center gap-2 shadow-lg shadow-[#00CFEF]/20">
-                    <Upload size={18} />
-                    Upload Image
+                <div className="w-full py-2.5 bg-[#00CFEF] hover:bg-[#00bce0] text-slate-950 rounded-lg font-bold text-center flex items-center justify-center gap-2 shadow-lg shadow-[#00CFEF]/20 text-xs">
+                    <Upload size={16} />
+                    Upload
                 </div>
             </label>
             
             <button 
                 onClick={handleSaveImage}
                 disabled={isSaving || !imageSrc}
-                className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 text-xs"
             >
-                {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />}
-                {isSaving ? "Saving..." : "Save Analysis"}
+                {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />}
+                Save
             </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 pb-8"> {/* Added bottom padding for safe scrolling */}
             {/* Tools Selection */}
             <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tools</h3>
@@ -424,17 +471,17 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload, apiKey, o
                     className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 border border-slate-700 text-xs"
                 >
                     {isAnalyzing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} className="text-purple-400" />}
-                    {isAnalyzing ? "Analyzing..." : "AI Alignment"}
+                    {isAnalyzing ? "Analyzing..." : "AI Alignment Check"}
                 </button>
 
-                {/* Desktop Save Button - Hidden on Mobile */}
+                {/* Desktop Save Button */}
                 <button 
                     onClick={handleSaveImage}
                     disabled={isSaving || !imageSrc}
                     className="hidden lg:flex w-full py-2.5 bg-[#00CFEF] hover:bg-[#00bce0] disabled:opacity-50 text-slate-950 rounded-lg font-bold transition-colors items-center justify-center gap-2 shadow-lg shadow-[#00CFEF]/20 text-xs"
                 >
                     {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Download size={14} />}
-                    {isSaving ? "Saving..." : "Save Analysis"}
+                    Save Analysis
                 </button>
             </div>
 
