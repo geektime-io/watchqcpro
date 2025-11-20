@@ -3,18 +3,18 @@ import { TimegrapherMetrics, AlignmentAnalysis } from "../types";
 
 /**
  * Checks if the API key is present.
+ * Note: Using import.meta.env for Vite compatibility
  */
 export const checkApiKey = (): boolean => {
-    const key = process.env.API_KEY;
+    const key = import.meta.env.VITE_API_KEY;
     return !!key && key.length > 0;
 }
 
 const getGenAI = () => {
-    const apiKey = process.env.API_KEY;
+    const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey || apiKey.trim() === "") {
         throw new Error("API_KEY_MISSING");
     }
-    // Use process.env.API_KEY directly as required by guidelines
     return new GoogleGenAI({ apiKey });
 };
 
@@ -93,7 +93,8 @@ export const compressImage = (blob: Blob, maxWidth: number = 1024): Promise<{ ba
             resolve({ base64, mimeType: 'image/jpeg' });
         };
         
-        img.onerror = (err) => {
+        // Removed unused 'err' parameter to fix TS6133 build error
+        img.onerror = () => {
             URL.revokeObjectURL(objectUrl);
             reject(new Error("Failed to load image for compression"));
         };
