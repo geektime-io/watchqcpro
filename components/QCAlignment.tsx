@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, RotateCcw, Crosshair, Minus, Plus, Download, Loader2, Sparkles, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Upload, RotateCcw, Crosshair, Minus, Plus, Download, Loader2, Sparkles, AlertTriangle, XCircle } from 'lucide-react'; // 移除 CheckCircle2
 import { OverlayConfig, ImageState, AlignmentAnalysis } from '../types';
 import { analyzeAlignmentImage, compressImage } from '../services/geminiService';
 import html2canvas from 'html2canvas';
@@ -160,10 +160,11 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
     lastTouchPos.current = null;
   };
 
-
-  const adjustRotation = (delta: number) => {
+  // 移除未使用的变量 'adjustRotation'
+  /* const adjustRotation = (delta: number) => {
     setImgState(prev => ({ ...prev, rotation: parseFloat((prev.rotation + delta).toFixed(2)) }));
   };
+  */
 
   const handleSaveImage = async () => {
     if (!containerRef.current || !imageSrc) return;
@@ -239,16 +240,16 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
           
           {/* 12 Hour Markers */}
           <div className="absolute inset-0 flex items-center justify-center">
-             {[...Array(6)].map((_, i) => (
+              {[...Array(6)].map((_, i) => (
                 <div 
-                 key={i} 
-                 className="absolute w-full h-px shadow-sm" 
-                 style={{ 
-                   backgroundColor: overlay.color, 
-                   transform: `rotate(${i * 30}deg)` 
-                 }} 
-               />
-             ))}
+                  key={i} 
+                  className="absolute w-full h-px shadow-sm" 
+                  style={{ 
+                    backgroundColor: overlay.color, 
+                    transform: `rotate(${i * 30}deg)` 
+                  }} 
+                />
+              ))}
           </div>
 
           {/* Center Circle */}
@@ -286,10 +287,10 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
       >
         {/* Toolbar */}
         <div className="absolute top-4 left-4 right-4 z-30 flex justify-between items-center pointer-events-none">
-             <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg pointer-events-auto text-[10px] text-white/70 border border-white/10 shadow-lg">
+              <div className="bg-black/60 backdrop-blur-md p-2 rounded-lg pointer-events-auto text-[10px] text-white/70 border border-white/10 shadow-lg">
                 {imageSrc ? "Pinch to zoom • Drag to pan" : "Upload to start"}
-             </div>
-             <div className="flex gap-2">
+              </div>
+              <div className="flex gap-2">
                 {imageSrc && (
                     <button 
                         onClick={handleSaveImage}
@@ -307,7 +308,7 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
                 >
                     <RotateCcw size={16} />
                 </button>
-             </div>
+              </div>
         </div>
 
         {/* Interactive Area */}
@@ -416,8 +417,8 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
 
                 {isAnalyzing && (
                      <div className="flex items-center justify-center gap-2 py-6 text-slate-400 text-sm">
-                        <Loader2 className="animate-spin text-[#00CFEF]" size={20} />
-                        <span>Scanning for alignment issues...</span>
+                         <Loader2 className="animate-spin text-[#00CFEF]" size={20} />
+                         <span>Scanning for alignment issues...</span>
                      </div>
                 )}
                 
