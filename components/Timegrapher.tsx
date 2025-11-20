@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import { Upload, Activity, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react';
-import { analyzeTimegrapherImage } from '../services/geminiService';
+import { analyzeTimegrapherImage, compressImage } from '../services/geminiService';
 import { TimegrapherMetrics } from '../types';
 
 interface TimegrapherProps {
   imageSrc: string | null;
   onUpload: (file: File) => void;
-  apiKey: string;
   onOpenSettings: () => void;
 }
 
-const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey }) => {
+const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload }) => {
   const [metrics, setMetrics] = useState<TimegrapherMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,40 +17,24 @@ const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey })
   const handleAnalyze = async () => {
     if (!imageSrc) return;
     
-    // Simple check if key is provided by parent (should always be true now)
-    if (!apiKey) {
-        setError("API Key configuration error.");
-        return;
-    }
-
     setLoading(true);
     setError(null);
     setMetrics(null);
 
     try {
-      // Convert src to base64 raw content for the API
+      // Get blob from the object URL
       const response = await fetch(imageSrc);
       const blob = await response.blob();
-      const reader = new FileReader();
       
-      reader.onloadend = async () => {
-        const base64data = reader.result as string;
-        // Remove data:image/png;base64, prefix
-        const base64Content = base64data.split(',')[1];
-        const mimeType = base64data.substring(base64data.indexOf(':') + 1, base64data.indexOf(';'));
-        
-        try {
-            const result = await analyzeTimegrapherImage(base64Content, mimeType, apiKey);
-            setMetrics(result);
-        } catch (err: any) {
-            setError(err.message || "Analysis failed");
-        } finally {
-            setLoading(false);
-        }
-      };
-      reader.readAsDataURL(blob);
-    } catch (e) {
-      setError("Could not process image");
+      // Compress image before sending to AI (Critical for mobile)
+      const { base64, mimeType } = await compressImage(blob);
+      
+      const result = await analyzeTimegrapherImage(base64, mimeType);
+      setMetrics(result);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || "Could not process image");
+    } finally {
       setLoading(false);
     }
   };
@@ -139,8 +122,9 @@ const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey })
                 </h3>
 
                 {error && (
-                    <div className="bg-rose-950/30 border border-rose-900 text-rose-200 p-4 rounded-lg text-sm mb-4">
-                        {error}
+                    <div className="bg-rose-950/30 border border-rose-900 text-rose-200 p-4 rounded-lg text-sm mb-4 flex items-start gap-2">
+                        <AlertCircle className="shrink-0 mt-0.5" size={16} />
+                        <span>{error}</span>
                     </div>
                 )}
 
