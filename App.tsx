@@ -5,6 +5,9 @@ import Timegrapher from './components/Timegrapher';
 import { QCMode } from './types';
 import { checkApiKey } from './services/geminiService';
 
+// Update this version number manually when you deploy to verify changes
+const APP_VERSION = "v1.2"; 
+
 const App: React.FC = () => {
   const [mode, setMode] = useState<QCMode>(QCMode.ALIGNMENT);
   const [alignmentImage, setAlignmentImage] = useState<string | null>(null);
@@ -13,6 +16,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setHasKey(checkApiKey());
+    console.log(`GeekTime QC Tool Loaded - Version: ${APP_VERSION}`);
   }, []);
   
   // Using URL.createObjectURL ensures the browser uses the original file reference
@@ -55,10 +59,11 @@ const App: React.FC = () => {
             </a>
 
             {/* System Status Indicator */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-800 border border-slate-700 ml-2">
+            <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-full bg-slate-800 border border-slate-700 ml-2">
                 <div className={`w-2 h-2 rounded-full ${hasKey ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-rose-500 animate-pulse'}`}></div>
-                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider flex gap-2">
                     {hasKey ? 'System Ready' : 'No API Key'}
+                    <span className="text-slate-600 border-l border-slate-600 pl-2">{APP_VERSION}</span>
                 </span>
             </div>
           </div>
@@ -96,7 +101,7 @@ const App: React.FC = () => {
         {/* Mobile Status Banner if Key Missing */}
         {!hasKey && (
             <div className="bg-rose-600 text-white text-[10px] py-1 px-4 text-center font-bold uppercase tracking-wider">
-                API Key Config Missing - AI Features Disabled
+                API Key Config Missing - AI Features Disabled ({APP_VERSION})
             </div>
         )}
       </header>
