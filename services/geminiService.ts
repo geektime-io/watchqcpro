@@ -1,14 +1,52 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TimegrapherMetrics, AlignmentAnalysis } from "../types";
 
+/**
+ * Checks if the API key is present.
+ */
+export const checkApiKey = (): boolean => {
+    const key = process.env.API_KEY;
+    return !!key && key.length > 0;
+}
+
 const getGenAI = () => {
     const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        console.error("API_KEY is missing. Please set it in your environment variables.");
-        throw new Error("API Key is missing. Please configure the API_KEY environment variable.");
+    if (!apiKey || apiKey.trim() === "") {
+        throw new Error("API_KEY_MISSING");
     }
     // Use process.env.API_KEY directly as required by guidelines
     return new GoogleGenAI({ apiKey });
+};
+
+/**
+ * Helper to handle errors and return user-friendly messages
+ */
+const handleGeminiError = (error: any, context: string): never => {
+    console.error(`Gemini ${context} Error:`, error);
+    let msg = error.message || "Unknown error";
+
+    if (msg === "API_KEY_MISSING") {
+        throw new Error("System Configuration Error: API Key is missing in the build.");
+    }
+
+    // Google API specific errors
+    if (msg.includes("API key not valid") || msg.includes("400")) {
+        throw new Error("API Rejected: Invalid Key. If PC works, check Mobile Network/IP/Referrer restrictions.");
+    }
+    
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        throw new Error("Network Error: Cannot reach Google API. Check VPN/Proxy connection on mobile.");
+    }
+
+    if (msg.includes("429")) {
+        throw new Error("System Busy: Too many requests. Please wait a moment.");
+    }
+
+    if (msg.includes("503") || msg.includes("500")) {
+        throw new Error("Google Service Error. Please try again later.");
+    }
+
+    throw new Error(`${context} failed: ${msg.substring(0, 100)}...`);
 };
 
 /**
@@ -49,7 +87,8 @@ export const compressImage = (blob: Blob, maxWidth: number = 1024): Promise<{ ba
             ctx.drawImage(img, 0, 0, width, height);
 
             // Compress to JPEG at 80% quality
-            const dataUrl = elem.toDataURL('image/jpeg', 0.8);
+            // Note: 0.7 is often good enough for text recognition and safer for mobile memory
+            const dataUrl = elem.toDataURL('image/jpeg', 0.7);
             const base64 = dataUrl.split(',')[1];
             resolve({ base64, mimeType: 'image/jpeg' });
         };
@@ -69,6 +108,11 @@ export const compressImage = (blob: Blob, maxWidth: number = 1024): Promise<{ ba
 export const analyzeTimegrapherImage = async (base64Image: string, mimeType: string): Promise<TimegrapherMetrics> => {
   try {
     const ai = getGenAI();
+    
+    if (!base64Image || base64Image.length < 100) {
+        throw new Error("Image data corrupted during processing.");
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: {
@@ -102,16 +146,12 @@ export const analyzeTimegrapherImage = async (base64Image: string, mimeType: str
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response from AI");
+    if (!text) throw new Error("Empty response from AI");
     
     return JSON.parse(text) as TimegrapherMetrics;
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
-    const errorMessage = error.message || "Unknown error";
-    if (errorMessage.includes("API Key")) {
-        throw new Error(errorMessage);
-    }
-    throw new Error(`Analysis failed: ${errorMessage}`);
+    handleGeminiError(error, "Analysis");
+    return {} as TimegrapherMetrics; // Unreachable, strictly for TS
   }
 };
 
@@ -121,6 +161,11 @@ export const analyzeTimegrapherImage = async (base64Image: string, mimeType: str
 export const analyzeAlignmentImage = async (base64Image: string, mimeType: string): Promise<AlignmentAnalysis> => {
     try {
       const ai = getGenAI();
+
+      if (!base64Image || base64Image.length < 100) {
+        throw new Error("Image data corrupted during processing.");
+      }
+
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: {
@@ -167,15 +212,11 @@ export const analyzeAlignmentImage = async (base64Image: string, mimeType: strin
       });
   
       const text = response.text;
-      if (!text) throw new Error("No response from AI");
+      if (!text) throw new Error("Empty response from AI");
       
       return JSON.parse(text) as AlignmentAnalysis;
     } catch (error: any) {
-      console.error("Gemini Alignment Analysis Error:", error);
-      const errorMessage = error.message || "Unknown error";
-      if (errorMessage.includes("API Key")) {
-          throw new Error(errorMessage);
-      }
-      throw new Error(`Alignment check failed: ${errorMessage}`);
+      handleGeminiError(error, "Alignment Check");
+      return {} as AlignmentAnalysis; // Unreachable
     }
   };
