@@ -381,8 +381,8 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
       </div>
 
       {/* Controls Sidebar */}
-      <div className="order-2 lg:w-80 bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-[45vh] lg:h-auto shrink-0">
-        <div className="p-4 flex-1 overflow-y-auto">
+      <div className="order-2 lg:w-[400px] bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col h-[45vh] lg:h-auto shrink-0">
+        <div className="p-5 flex-1 overflow-y-auto">
             
             {/* File Upload */}
             <div className="mb-6">
@@ -396,10 +396,10 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
             </div>
 
             {/* AI Analysis Section */}
-            <div className="mb-6 p-4 bg-slate-900 rounded-xl border border-slate-800">
-                <div className="flex justify-between items-center mb-3">
+            <div className="mb-6 p-5 bg-slate-900 rounded-xl border border-slate-800 shadow-lg">
+                <div className="flex justify-between items-center mb-4">
                      <h3 className="text-white text-sm font-bold flex items-center gap-2">
-                        <Sparkles className="text-[#00CFEF]" size={16} />
+                        <Sparkles className="text-[#00CFEF]" size={18} />
                         AI Alignment Check
                      </h3>
                 </div>
@@ -408,50 +408,53 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
                     <button 
                         onClick={handleAnalyze}
                         disabled={!imageSrc}
-                        className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors border border-slate-700 flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors border border-slate-700 flex items-center justify-center gap-2 font-medium"
                     >
                         Analyze Alignment
                     </button>
                 )}
 
                 {isAnalyzing && (
-                     <div className="flex items-center justify-center gap-2 py-4 text-slate-400 text-sm">
-                        <Loader2 className="animate-spin text-[#00CFEF]" size={18} />
-                        Analyzing structure...
+                     <div className="flex items-center justify-center gap-2 py-6 text-slate-400 text-sm">
+                        <Loader2 className="animate-spin text-[#00CFEF]" size={20} />
+                        <span>Scanning for alignment issues...</span>
                      </div>
                 )}
                 
                 {error && (
-                    <div className="mt-2 p-3 bg-rose-950/30 border border-rose-900/50 rounded-lg flex items-start gap-2 text-rose-200 text-xs">
-                        <XCircle className="shrink-0 mt-0.5" size={14} />
-                        <span>{error}</span>
+                    <div className="mt-2 p-4 bg-rose-950/30 border border-rose-900/50 rounded-lg flex flex-col gap-2 text-rose-200 text-xs">
+                        <div className="flex items-center gap-2 font-bold">
+                            <XCircle className="shrink-0" size={16} />
+                            <span>Analysis Failed</span>
+                        </div>
+                        <span className="whitespace-pre-wrap leading-relaxed opacity-90">{error}</span>
                     </div>
                 )}
 
                 {analysis && (
-                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-slate-400 text-xs">Verdict</span>
-                            <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${
-                                analysis.verdict === 'Excellent' ? 'bg-emerald-500/20 text-emerald-400' :
-                                analysis.verdict === 'Reject' ? 'bg-rose-500/20 text-rose-400' :
-                                'bg-amber-500/20 text-amber-400'
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-800/50">
+                            <span className="text-slate-400 text-sm font-medium">Verdict</span>
+                            <span className={`text-sm font-bold px-3 py-1 rounded-full border ${
+                                analysis.verdict === 'Excellent' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                analysis.verdict === 'Reject' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
+                                'bg-amber-500/10 border-amber-500/20 text-amber-400'
                             }`}>
                                 {analysis.verdict}
                             </span>
                         </div>
                         
-                        <div className="text-xs text-slate-300 leading-relaxed border-l-2 border-[#00CFEF] pl-2">
+                        <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-800/50 text-sm text-slate-300 leading-relaxed">
                             {analysis.summary}
                         </div>
 
                         {analysis.issues && analysis.issues.length > 0 && analysis.issues[0] !== "None" && (
-                            <div className="space-y-1">
-                                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Detected Issues</p>
+                            <div className="space-y-2 mt-2">
+                                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold">Detected Issues</p>
                                 {analysis.issues.map((issue, idx) => (
-                                    <div key={idx} className="flex items-start gap-1.5 text-xs text-rose-300">
-                                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-                                        <span>{issue}</span>
+                                    <div key={idx} className="flex items-start gap-2 text-xs text-rose-300 bg-rose-950/20 p-2 rounded border border-rose-900/20">
+                                        <AlertTriangle size={14} className="shrink-0 mt-0.5 text-rose-400" />
+                                        <span className="leading-tight">{issue}</span>
                                     </div>
                                 ))}
                             </div>
@@ -461,87 +464,87 @@ const QCAlignment: React.FC<QCAlignmentProps> = ({ imageSrc, onUpload }) => {
             </div>
 
             {/* Manual Tools */}
-            <div className="space-y-5">
+            <div className="space-y-5 border-t border-slate-800 pt-5">
                 <h3 className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Manual Overlay</h3>
                 
                 {/* Tool Type */}
                 <div className="grid grid-cols-2 gap-2">
                     <button 
                         onClick={() => setOverlay(p => ({...p, type: 'indices'}))}
-                        className={`p-2 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all ${overlay.type === 'indices' ? 'bg-[#00CFEF]/10 border-[#00CFEF] text-[#00CFEF]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
+                        className={`p-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all ${overlay.type === 'indices' ? 'bg-[#00CFEF]/10 border-[#00CFEF] text-[#00CFEF]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
                     >
-                        <Crosshair size={14} />
+                        <Crosshair size={16} />
                         Indices
                     </button>
                     <button 
                         onClick={() => setOverlay(p => ({...p, type: 'grid'}))}
-                        className={`p-2 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all ${overlay.type === 'grid' ? 'bg-[#00CFEF]/10 border-[#00CFEF] text-[#00CFEF]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
+                        className={`p-3 rounded-lg border text-xs font-medium flex items-center justify-center gap-2 transition-all ${overlay.type === 'grid' ? 'bg-[#00CFEF]/10 border-[#00CFEF] text-[#00CFEF]' : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
                     >
-                        <div className="w-3 h-3 grid grid-cols-2 gap-px bg-current opacity-50"><div className="bg-transparent"></div></div>
+                        <div className="w-4 h-4 grid grid-cols-2 gap-px bg-current opacity-50"><div className="bg-transparent"></div></div>
                         Grid
                     </button>
                 </div>
 
                 {/* Color Picker */}
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-3 overflow-x-auto pb-1">
                     {['#00CFEF', '#EF4444', '#10B981', '#F59E0B', '#FFFFFF'].map(c => (
                         <button
                             key={c}
                             onClick={() => setOverlay(p => ({...p, color: c}))}
-                            className={`w-6 h-6 rounded-full shrink-0 border-2 transition-all ${overlay.color === c ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                            className={`w-7 h-7 rounded-full shrink-0 border-2 transition-all ${overlay.color === c ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`}
                             style={{ backgroundColor: c }}
                         />
                     ))}
                 </div>
 
                 {/* Controls */}
-                <div className="space-y-4">
+                <div className="space-y-5">
                     {/* Rotation */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                         <div className="flex justify-between text-xs text-slate-400">
                             <span>Rotation</span>
-                            <span>{overlay.rotation}°</span>
+                            <span className="font-mono">{overlay.rotation}°</span>
                         </div>
                         <input 
                             type="range" 
                             min="-15" max="15" step="0.1" 
                             value={overlay.rotation}
                             onChange={(e) => setOverlay(p => ({...p, rotation: parseFloat(e.target.value)}))}
-                            className="w-full accent-[#00CFEF] h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                            className="w-full accent-[#00CFEF] h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                         />
                     </div>
 
                     {/* Scale */}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                         <div className="flex justify-between text-xs text-slate-400">
                             <span>Scale</span>
-                            <span>{overlay.scale}%</span>
+                            <span className="font-mono">{overlay.scale}%</span>
                         </div>
                         <input 
                             type="range" 
                             min="50" max="150" step="1" 
                             value={overlay.scale}
                             onChange={(e) => setOverlay(p => ({...p, scale: parseFloat(e.target.value)}))}
-                            className="w-full accent-[#00CFEF] h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                            className="w-full accent-[#00CFEF] h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                         />
                     </div>
 
                     {/* Nudge Controls */}
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[10px] text-slate-500 text-center uppercase">Vertical</span>
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] text-slate-500 text-center uppercase font-semibold">Vertical</span>
                             <div className="flex items-center bg-slate-900 rounded-lg border border-slate-800">
-                                <button onClick={() => setOverlay(p => ({...p, offsetY: p.offsetY - 1}))} className="flex-1 p-2 hover:bg-slate-800 text-slate-400"><Minus size={12} className="mx-auto"/></button>
+                                <button onClick={() => setOverlay(p => ({...p, offsetY: p.offsetY - 1}))} className="flex-1 p-3 hover:bg-slate-800 text-slate-400"><Minus size={14} className="mx-auto"/></button>
                                 <span className="text-xs font-mono w-8 text-center">{overlay.offsetY}</span>
-                                <button onClick={() => setOverlay(p => ({...p, offsetY: p.offsetY + 1}))} className="flex-1 p-2 hover:bg-slate-800 text-slate-400"><Plus size={12} className="mx-auto"/></button>
+                                <button onClick={() => setOverlay(p => ({...p, offsetY: p.offsetY + 1}))} className="flex-1 p-3 hover:bg-slate-800 text-slate-400"><Plus size={14} className="mx-auto"/></button>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-1">
-                            <span className="text-[10px] text-slate-500 text-center uppercase">Horizontal</span>
+                        <div className="flex flex-col gap-1.5">
+                            <span className="text-[10px] text-slate-500 text-center uppercase font-semibold">Horizontal</span>
                             <div className="flex items-center bg-slate-900 rounded-lg border border-slate-800">
-                                <button onClick={() => setOverlay(p => ({...p, offsetX: p.offsetX - 1}))} className="flex-1 p-2 hover:bg-slate-800 text-slate-400"><Minus size={12} className="mx-auto"/></button>
+                                <button onClick={() => setOverlay(p => ({...p, offsetX: p.offsetX - 1}))} className="flex-1 p-3 hover:bg-slate-800 text-slate-400"><Minus size={14} className="mx-auto"/></button>
                                 <span className="text-xs font-mono w-8 text-center">{overlay.offsetX}</span>
-                                <button onClick={() => setOverlay(p => ({...p, offsetX: p.offsetX + 1}))} className="flex-1 p-2 hover:bg-slate-800 text-slate-400"><Plus size={12} className="mx-auto"/></button>
+                                <button onClick={() => setOverlay(p => ({...p, offsetX: p.offsetX + 1}))} className="flex-1 p-3 hover:bg-slate-800 text-slate-400"><Plus size={14} className="mx-auto"/></button>
                             </div>
                         </div>
                     </div>
