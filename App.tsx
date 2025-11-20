@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Watch, Activity, CheckSquare, Wifi, AlertTriangle } from 'lucide-react';
+import { Watch, Activity, CheckSquare } from 'lucide-react'; // 移除 Wifi, AlertTriangle
 import QCAlignment from './components/QCAlignment';
 import Timegrapher from './components/Timegrapher';
 import { QCMode } from './types';
