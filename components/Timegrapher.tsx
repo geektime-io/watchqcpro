@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, Activity, CheckCircle, AlertCircle, Info, Loader2, Key } from 'lucide-react';
+import { Upload, Activity, CheckCircle, AlertCircle, Info, Loader2 } from 'lucide-react';
 import { analyzeTimegrapherImage } from '../services/geminiService';
 import { TimegrapherMetrics } from '../types';
 
@@ -10,7 +10,7 @@ interface TimegrapherProps {
   onOpenSettings: () => void;
 }
 
-const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey, onOpenSettings }) => {
+const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey }) => {
   const [metrics, setMetrics] = useState<TimegrapherMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,9 +18,9 @@ const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey, o
   const handleAnalyze = async () => {
     if (!imageSrc) return;
     
+    // Simple check if key is provided by parent (should always be true now)
     if (!apiKey) {
-        setError("Please enter your Google API Key in Settings to use AI analysis.");
-        onOpenSettings();
+        setError("API Key configuration error.");
         return;
     }
 
@@ -92,12 +92,12 @@ const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey, o
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="max-w-4xl mx-auto p-4 md:p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
         
         {/* Left Column: Upload & Image */}
-        <div className="space-y-6">
-             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg min-h-[300px] flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="space-y-4 md:space-y-6">
+             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg min-h-[250px] flex flex-col items-center justify-center relative overflow-hidden">
                 {imageSrc ? (
                     <img src={imageSrc} alt="Timegrapher" className="max-w-full max-h-[400px] object-contain rounded" />
                 ) : (
@@ -125,20 +125,10 @@ const Timegrapher: React.FC<TimegrapherProps> = ({ imageSrc, onUpload, apiKey, o
                         className="flex-1 py-3 px-4 bg-[#00CFEF] hover:bg-[#00bce0] disabled:bg-slate-700 disabled:text-slate-500 text-slate-950 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#00CFEF]/20"
                     >
                         {loading ? <Loader2 className="animate-spin" size={18} /> : <Activity size={18} />}
-                        {loading ? "Analyzing..." : "Analyze with AI"}
+                        {loading ? "Analyzing..." : "AI Analyze"}
                     </button>
                 )}
              </div>
-             
-             {!apiKey && (
-                 <div 
-                    onClick={onOpenSettings}
-                    className="cursor-pointer bg-[#00CFEF]/10 border border-[#00CFEF]/30 rounded-lg p-3 flex items-center gap-3 text-[#00CFEF] hover:bg-[#00CFEF]/20 transition-colors"
-                 >
-                     <Key size={16} />
-                     <p className="text-xs">AI features require an API Key. <strong>Click here to set it.</strong></p>
-                 </div>
-             )}
         </div>
 
         {/* Right Column: Results */}
